@@ -1,7 +1,6 @@
 import random
-from PyQt6.QtWidgets import QFrame, QGridLayout, QLabel, QMainWindow, QApplication, QVBoxLayout, QWidget, QHBoxLayout
+from PyQt6.QtWidgets import QFrame, QGridLayout, QLabel, QMainWindow, QApplication, QVBoxLayout, QWidget, QHBoxLayout, QDialog, QPushButton, QStackedWidget
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
 from random import choice, random
 
 
@@ -18,22 +17,54 @@ class MyWindow(QMainWindow):
 
         self.score = 0;
         self.best_score = self.load_best_score()
+        self.game_over = False
 
-        self.setWindowTitle("Моя игра 2048")
+        self.setWindowTitle("Игра 2048")
         self.setFixedSize(600,700)
         self.setStyleSheet("background-color: rgb(220,220,220);")
-        central_window = QWidget()
-        self.setCentralWidget(central_window)
-
-  
-    
+        self.stacked_widget = QStackedWidget()
+        self.setCentralWidget(self.stacked_widget)
+        
+       
+        menu_widget = QWidget()
+        menu_layout = QVBoxLayout()
+        menu_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        menu_layout.setSpacing(30)
+        
      
-
-
+        title = QLabel("2048")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setStyleSheet("font-size: 72px; font-weight: bold; color: #776e65;")
+        menu_layout.addWidget(title)
+      
+        start_btn = QPushButton("Начать игру")
+        start_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #8f7a66;
+                color: white;
+                font-size: 24px;
+                font-weight: bold;
+                padding: 20px 60px;
+                border-radius: 15px;
+                border: none;
+                min-width: 250px;
+            }
+            QPushButton:hover {
+                background-color: #9f8a76;
+            }
+        """)
+        start_btn.clicked.connect(self.start_game)
+        menu_layout.addWidget(start_btn)
+        
+        menu_widget.setLayout(menu_layout)
+        self.stacked_widget.addWidget(menu_widget)  
+        
+   
+        game_widget = QWidget()
         layout = QVBoxLayout()
-        central_window.setLayout(layout)
-
-
+        game_widget.setLayout(layout)
+        
+        
         title_layout = QHBoxLayout()
    
         title_score = QLabel("Score")
@@ -62,7 +93,6 @@ class MyWindow(QMainWindow):
 
         layout.addLayout(score_layout)
 
-     
         field = QFrame()
         field.setStyleSheet("""
             background-color: #bbada0;
@@ -90,11 +120,19 @@ class MyWindow(QMainWindow):
             self.cells.append(row)
         
         layout.addWidget(field, alignment=Qt.AlignmentFlag.AlignCenter)
+        
+        self.stacked_widget.addWidget(game_widget)  
+        
+      
+        self.stacked_widget.setCurrentIndex(0)  
 
-
+        self.add_random_num()
         self.add_random_num()
         self.update_game()
 
+    def start_game(self):
+        """Переключает на игровой экран"""
+        self.stacked_widget.setCurrentIndex(1) 
 
     def add_random_num(self):
         empty_cells = []
@@ -135,6 +173,126 @@ class MyWindow(QMainWindow):
                         )
         self.score_line.setText(str(self.score))
         self.update_best_score()
+    def is_board_full(self):
+      
+        for i in range(4):
+            for j in range(4):
+                if self.grid[i][j] == 0:
+                    return False
+        return True
+
+    def can_merge(self):
+      
+        for i in range(4):
+            for j in range(4):
+
+                if j < 3 and self.grid[i][j] == self.grid[i][j + 1]:
+                    return True
+               
+                if i < 3 and self.grid[i][j] == self.grid[i + 1][j]:
+                    return True
+        return False
+
+    def check_game_over(self):
+    
+        if self.is_board_full() and not self.can_merge():
+            self.game_over = True
+            self.show_game_over_message()
+            return True
+        return False
+
+    def show_game_over_message(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Игра окончена!")
+        dialog.setFixedSize(500, 350)  
+        dialog.setStyleSheet("background-color: #faf8ef;")
+    
+        layout = QVBoxLayout()
+        layout.setSpacing(15)
+        layout.setContentsMargins(30, 30, 30, 30)
+    
+       
+        title = QLabel("ИГРА ОКОНЧЕНА!")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setStyleSheet("""
+            font-size: 32px;
+            font-weight: bold;
+            color: #776e65;
+            padding: 20px;
+        """)
+        layout.addWidget(title)
+    
+        score = QLabel(f"Вы набрали: {self.score} очков")
+        score.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        score.setStyleSheet("""
+            font-size: 24px;
+            color: #776e65;
+            padding: 10px;
+        """)
+        layout.addWidget(score)
+    
+    
+        question = QLabel("Хотите начать заново?")
+        question.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        question.setStyleSheet("""
+            font-size: 20px;
+            color: #776e65;
+            padding: 20px;
+        """)
+        layout.addWidget(question)
+   
+        buttons = QHBoxLayout()
+        buttons.setSpacing(20)
+    
+        btn_yes = QPushButton("Да")
+        btn_yes.setStyleSheet("""
+            QPushButton {
+                background-color: #8f7a66;
+                color: white;
+                font-size: 18px;
+                padding: 12px 40px;
+                border-radius: 8px;
+                border: none;
+                min-width: 120px;
+            }
+            QPushButton:hover {
+                background-color: #9f8a76;
+            }
+        """)
+        btn_yes.clicked.connect(lambda: (dialog.accept(), self.reset_game()))
+    
+        btn_no = QPushButton("Нет")
+        btn_no.setStyleSheet("""
+            QPushButton {
+                background-color: #bbada0;
+                color: white;
+                font-size: 18px;
+                padding: 12px 40px;
+                border-radius: 8px;
+                border: none;
+                min-width: 120px;
+            }
+            QPushButton:hover {
+                background-color: #cbbdb0;
+            }
+        """)
+        btn_no.clicked.connect(lambda: (dialog.reject(), self.close()))
+    
+        buttons.addWidget(btn_yes)
+        buttons.addWidget(btn_no)
+        layout.addLayout(buttons)
+    
+        dialog.setLayout(layout)
+        dialog.exec()
+
+    def reset_game(self):
+
+        self.grid = [[0, 0, 0, 0] for _ in range(4)]
+        self.score = 0
+        self.game_over = False
+        self.add_random_num()
+        self.add_random_num()
+        self.update_game()
 
     def reverse_grid(self):
         new_grid = [[0] * 4 for _ in range(4)]
@@ -144,7 +302,7 @@ class MyWindow(QMainWindow):
 
         self.grid = new_grid
     def load_best_score(self):
-        """Загружает лучший счет из файла"""
+       
         try:
             with open("best_score.txt", "r") as f:
                 return int(f.read())
@@ -152,12 +310,12 @@ class MyWindow(QMainWindow):
             return 0
     
     def save_best_score(self):
-        """Сохраняет лучший счет в файл"""
+    
         with open("best_score.txt", "w") as f:
             f.write(str(self.best_score))
     
     def update_best_score(self):
-        """Обновляет лучший счет, если текущий больше"""
+      
         if self.score > self.best_score:
             self.best_score = self.score
             self.best_score_line.setText(str(self.best_score))
@@ -239,6 +397,7 @@ class MyWindow(QMainWindow):
         if moved:
             self.add_random_num()
             self.update_game()
+            self.check_game_over()
 
 def main():
 
